@@ -22,4 +22,23 @@ public class JwtService {
                 .signWith(SECRET_KEY)
                 .compact();
     }
+
+    // EXTRACT EMAIL
+    public String extractEmail(String token) {
+
+        return Jwts.parserBuilder()
+                .setSigningKey(SECRET_KEY)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    // VALIDATE TOKEN
+    public boolean validateToken(String token, String email) {
+
+        String extractedEmail = extractEmail(token);
+
+        return extractedEmail.equals(email);
+    }
 }
