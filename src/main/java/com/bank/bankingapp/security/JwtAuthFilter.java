@@ -19,7 +19,6 @@ import java.util.Collections;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-
     private final JwtService jwtService;
 
     public JwtAuthFilter(JwtService jwtService) {
@@ -36,43 +35,39 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
+            filterChain.doFilter(request, response);  // ✅ Continue for no token
             return;
         }
 
         String token = authHeader.substring(7);
-
         String email = jwtService.extractEmail(token);
-        
-        System.out.println("Extracted email: " + email); // DEBUGGING
-        
+
+        System.out.println("Extracted email: " + email);
+
         try {
+            if (email != null &&
+                    SecurityContextHolder.getContext().getAuthentication() == null) {
 
-
-    if (email != null &&
-            SecurityContextHolder.getContext().getAuthentication() == null) {
-
-        UsernamePasswordAuthenticationToken authToken =
-                new UsernamePasswordAuthenticationToken(
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         new User(email, "", Collections.emptyList()),
                         null,
-                        Collections.emptyList()
-                );
+                        Collections.emptyList());
 
-        authToken.setDetails(
-                new WebAuthenticationDetailsSource()
-                        .buildDetails(request)
-        );
+                authToken.setDetails(
+                        new WebAuthenticationDetailsSource()
+                                .buildDetails(request));
 
-        SecurityContextHolder.getContext()
-                .setAuthentication(authToken);
-    }
-
-} catch (Exception e) {
-
-    // invalid token → continue request
-}
-
-        
+                SecurityContextHolder.getContext()
+                        .setAuthentication(authToken);
+            }
+            
+            // ✅ CRITICAL FIX: Continue the filter chain
+            filterChain.doFilter(request, response);
+            
+        } catch (Exception e) {
+            // Invalid token - continue without authentication
+            System.out.println("Invalid token: " + e.getMessage());
+            filterChain.doFilter(request, response);  // ✅ Continue even on error
+        }
     }
 }
